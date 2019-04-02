@@ -1,5 +1,5 @@
 # analytical-stability
-Notes, presentations, plans, misc code, and links relating to the Analytical Stability project with Camille Maumet in INRIA
+Notes, presentations, plans, misc code, and links relating to the Analytical Stability project with Camille Maumet and Elisa Fromont in INRIA.
 
 ## Table of Contents
 
