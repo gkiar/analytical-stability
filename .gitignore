@@ -1,3 +1,8 @@
+# Custom
+*.swp
+*.json
+*.nii*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
