@@ -9,7 +9,7 @@ import os
 baseurl = "https://neurovault.org/api/images/"
 
 
-def gen_neurovault_getter(limit=1, offset=0, record=[], verb=False):
+def gen_neurovault_meta_getter(limit=1, offset=0, record=[], verb=False):
     # Create a function for getting data easily
     def nv_getter(next_url=None):
         # Creating request URLs
