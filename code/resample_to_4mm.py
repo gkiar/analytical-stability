@@ -16,7 +16,7 @@ shapes = {1: (182, 218, 182),
           4: (48, 56, 48)}
 
 def resample_images(images, outdir, resolution=4):
-    # Get file list 
+    # Get file list
     if op.isdir(images):
         files = glob(op.join(images, "**", "*.nii*"), recursive=True)
         inpdir = True
@@ -24,8 +24,7 @@ def resample_images(images, outdir, resolution=4):
         files = [images]
         inpdir = False
 
-
-
+    # Determine target affine transform
     if 1 <= resolution <= 4:
         target_affine = datasets.load_mni152_brain_mask().affine.copy()
         target_affine[:3,:3] = np.sign(target_affine[:3,:3]) * resolution
@@ -33,12 +32,20 @@ def resample_images(images, outdir, resolution=4):
     else:
         raise ValueError("Resolution must be between 1 mm and 4 mm, inclusive.")
 
-    im1 = nib.load(f1)
+    # Define resampling function for images with the determined afine and shape
     def _resample_to_resolution(orig_img):
         return resample_img(orig_img,
                             target_affine=target_affine,
                             target_shape=target_shape)
-    
+
+    for imfil in files:
+        newim = _resample_to_resolution(nib.load(imfil))
+        if inpdir:
+            fout = op.join(outdir, op.relpath(imfil, images))
+        else:
+            fout = op.join(outdir, op.basename(imfil))
+
+        nib.save(newim, fout)
 
 
 def main():
