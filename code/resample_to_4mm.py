@@ -7,6 +7,7 @@ import os
 
 from nilearn.image import resample_img
 from nilearn import datasets
+from scipy import ndimage
 import nibabel as nib
 import numpy as np
 
@@ -44,7 +45,8 @@ def resample_images(images, outdir, resolution=4):
     def _resample_to_resolution(orig_img):
         return resample_img(orig_img,
                             target_affine=target_affine,
-                            target_shape=target_shape)
+                            target_shape=target_shape,
+                            interpolation='nearest')
 
     for idx, imfile in enumerate(files):
         try:
@@ -56,7 +58,7 @@ def resample_images(images, outdir, resolution=4):
             if op.isfile(fout):
                 continue
 
-            print("Resampling image {0} of {1}...".format(idx, len(files)))
+            print("Resampling image {0} of {1}...".format(idx + 1, len(files)))
             os.system("mkdir -p {0}".format(op.dirname(fout)))
             newim = _resample_to_resolution(nib.load(imfile))
             nib.save(newim, fout)
@@ -66,20 +68,54 @@ def resample_images(images, outdir, resolution=4):
             continue
 
 
-def visualize_voxel_maps(images, outdir, resultion=4):
+def visualize_voxel_maps(images, outdir, resolution=4):
+    # Plotting the image matrices, intentionally avoiding nilearn utils
+    # because I want to see how the matrices overlap without any fanciness,
+    # just like the network will receive them.
+
     # Get file list
     files, inpdir = _get_imlist(images)
 
     # load brain mask from nilearn
+    mask = datasets.load_mni152_brain_mask()
+    target_affine = mask.affine.copy()
+    target_affine[:3,:3] = np.sign(target_affine[:3,:3]) * resolution
+    target_shape = shapes[resolution]
+
     # resample mask image to resolution
-    # convert to boundary, make it red
-    # for idx, imfile in enumerate(files):
-    #   load map
-    #   binarize
-    #   add intensity 1 to mask for each non zero loc
-    # set all remaining zeros to None
-    # TODO: check total count/rescale to image range
-    # visualize
+    mask = resample_img(mask,
+                        target_affine=target_affine,
+                        target_shape=target_shape,
+                        interpolation='nearest')
+    dtype = mask.get_data_dtype()
+    mask = mask.get_data().astype(int)
+
+    # convert to boundary
+    mask = ndimage.binary_closing(mask, iterations=3).astype(int)
+    outer = ndimage.binary_dilation(mask, iterations=2).astype(int)
+    mask = (outer - mask).astype('<f4')
+    nib.save(nib.Nifti1Image(mask, affine=target_affine), 'boundary.nii.gz')
+
+    cloud = np.zeros_like(mask)
+    for idx, imfile in enumerate(files):
+        try:
+            print("Loading image {0} of {1}...".format(idx + 1, len(files)))
+            # load map and binarize
+            immap = nib.load(imfile).get_data()
+            immap = (immap > 0).astype(int).astype('<f4')
+
+            # add value to map
+            cloud += immap
+        except Exception as e:
+            print("Failed!")
+            print(e)
+            continue
+
+    # add boundary to image as largest intensity
+    # cloud[mask > 0] = np.max(cloud) + 10
+
+    cloud_img = nib.Nifti1Image(cloud, affine=target_affine)
+    nib.save(cloud_img, op.join(outdir, 'pointcloud.nii.gz'))
 
 
 def main():
