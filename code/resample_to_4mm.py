@@ -47,14 +47,23 @@ def resample_images(images, outdir, resolution=4):
                             target_shape=target_shape)
 
     for idx, imfile in enumerate(files):
-        print("Resampling image {0} of {1}...".format(idx, len(files)))
-        newim = _resample_to_resolution(nib.load(imfile))
-        if inpdir:
-            fout = op.join(outdir, op.relpath(imfile, images))
-        else:
-            fout = op.join(outdir, op.basename(imfile))
-        os.system("mkdir -p {0}".format(op.dirname(fout)))
-        nib.save(newim, fout)
+        try:
+            if inpdir:
+                fout = op.join(outdir, op.relpath(imfile, images))
+            else:
+                fout = op.join(outdir, op.basename(imfile))
+
+            if op.isfile(fout):
+                continue
+
+            print("Resampling image {0} of {1}...".format(idx, len(files)))
+            os.system("mkdir -p {0}".format(op.dirname(fout)))
+            newim = _resample_to_resolution(nib.load(imfile))
+            nib.save(newim, fout)
+        except Exception as e:
+            print("Failed!")
+            print(e)
+            continue
 
 
 def visualize_voxel_maps(images, outdir, resultion=4):
